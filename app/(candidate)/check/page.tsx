@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Link from "next/link";
 import { Upload, FileText, ArrowRight, CheckCircle, AlertCircle, Minus } from "lucide-react";
 import type { SelfCheckResult } from "@/lib/ai/types";
 
@@ -229,9 +230,9 @@ export default function CandidateCheckPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
       <div className="mb-10">
-        <a href="/" className="text-sm text-muted hover:text-foreground mb-6 inline-block transition-colors">
+        <Link href="/" className="text-sm text-muted hover:text-foreground mb-6 inline-block transition-colors">
           ← CandidView
-        </a>
+        </Link>
         <h1 className="text-2xl sm:text-3xl font-semibold text-foreground mb-2">
           Check your match
         </h1>

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function CandidateLayout({
   children,
 }: {
@@ -7,9 +9,9 @@ export default function CandidateLayout({
     <div className="flex flex-col min-h-screen">
       <header className="sticky top-0 z-10 border-b border-white/50 glass">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center">
-          <a href="/" className="text-base font-semibold text-primary tracking-tight">
+          <Link href="/" className="text-base font-semibold text-primary tracking-tight">
             CandidView
-          </a>
+          </Link>
         </div>
       </header>
       <main className="flex-1">{children}</main>

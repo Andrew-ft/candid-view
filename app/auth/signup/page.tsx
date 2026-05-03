@@ -38,9 +38,9 @@ export default function SignUpPage() {
       <div className="w-full max-w-sm">
 
         <div className="text-center mb-8">
-          <a href="/" className="text-xl font-semibold text-primary tracking-tight block mb-8">
+          <Link href="/" className="text-xl font-semibold text-primary tracking-tight block mb-8">
             CandidView
-          </a>
+          </Link>
           <h1 className="text-2xl font-semibold text-foreground mb-1">
             Create your account
           </h1>
