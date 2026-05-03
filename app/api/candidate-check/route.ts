@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await candidateSelfCheck(cvText, jdText);
-    return NextResponse.json({ result });
+    return NextResponse.json({ result, jdText });
   } catch (error) {
     const msg = errorMessage(error);
     console.error("[candidate-check]", msg);

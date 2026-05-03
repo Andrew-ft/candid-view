@@ -61,9 +61,9 @@ export default function CandidateCheckPage() {
   const [coachResult, setCoachResult] = useState<LearningCoachResult | null>(null);
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState("");
+  const [jdTextForCoach, setJdTextForCoach] = useState("");
   const jdFileRef = useRef<HTMLInputElement>(null);
   const cvFileRef = useRef<HTMLInputElement>(null);
-  const jdTextRef = useRef("");
 
   async function handleCheck() {
     if ((!jd.trim() && !jdFile) || (!cv.trim() && !cvFile)) {
@@ -100,7 +100,7 @@ export default function CandidateCheckPage() {
       if (!res.ok) throw new Error(data.error || "Something went wrong");
       setResult(data.result);
       setCoachResult(null);
-      jdTextRef.current = jdFile ? "" : jd;
+      setJdTextForCoach(data.jdText ?? jd);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -118,7 +118,7 @@ export default function CandidateCheckPage() {
     setError("");
     setCoachResult(null);
     setCoachError("");
-    jdTextRef.current = "";
+    setJdTextForCoach("");
   }
 
   async function handleGetLearningPlan() {
@@ -132,7 +132,7 @@ export default function CandidateCheckPage() {
         body: JSON.stringify({
           tier: result.tier,
           requirementMatches: result.requirementMatches,
-          jobDescription: jdTextRef.current,
+          jobDescription: jdTextForCoach,
         }),
       });
       const data = await res.json();
@@ -324,7 +324,7 @@ export default function CandidateCheckPage() {
                               ) : (
                                 <span className="font-medium text-foreground">{r.name}</span>
                               )}
-                              {r.searchFor && <span className="text-muted-foreground"> — search: "{r.searchFor}"</span>}
+                              {r.searchFor && <span className="text-muted-foreground"> — search: &quot;{r.searchFor}&quot;</span>}
                               <span className="text-muted-foreground"> · {r.timeCommitment} · {r.cost}</span>
                             </div>
                           </div>
