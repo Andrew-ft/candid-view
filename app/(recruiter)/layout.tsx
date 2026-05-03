@@ -54,7 +54,11 @@ export default async function RecruiterLayout({
           <form
             action={async () => {
               "use server";
-              await signOut({ redirectTo: "/" });
+              const { headers } = await import("next/headers");
+              const h = await headers();
+              const host = h.get("x-forwarded-host") || h.get("host") || "";
+              const proto = h.get("x-forwarded-proto") || "https";
+              await signOut({ redirectTo: `${proto}://${host}/` });
             }}
           >
             <button
