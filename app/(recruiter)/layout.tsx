@@ -56,8 +56,8 @@ export default async function RecruiterLayout({
               "use server";
               const { headers } = await import("next/headers");
               const h = await headers();
-              const host = h.get("x-forwarded-host") || h.get("host") || "";
-              const proto = h.get("x-forwarded-proto") || "https";
+              const host = h.get("x-forwarded-host") || h.get("host") || "localhost:3000";
+              const proto = host.startsWith("localhost") ? "http" : (h.get("x-forwarded-proto") || "https");
               await signOut({ redirectTo: `${proto}://${host}/` });
             }}
           >
