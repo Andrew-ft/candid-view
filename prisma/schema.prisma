@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String      @id @default(cuid())
+  email          String      @unique
+  hashedPassword String
+  name           String?
+  createdAt      DateTime    @default(now())
+  screenings     Screening[]
+  overrides      Override[]
+}
+
+model Screening {
+  id               String      @id @default(cuid())
+  userId           String
+  jobTitle         String
+  jobDescription   String
+  jdFairnessFlags  String      @default("[]")
+  createdAt        DateTime    @default(now())
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  candidates       Candidate[]
+}
+
+model Candidate {
+  id                  String    @id @default(cuid())
+  screeningId         String
+  fileName            String
+  parsedText          String
+  tier                String    @default("WORTH_A_LOOK")
+  summary             String    @default("")
+  requirementMatches  String    @default("[]")
+  notableContext      String?
+  createdAt           DateTime  @default(now())
+  screening           Screening @relation(fields: [screeningId], references: [id], onDelete: Cascade)
+  overrides           Override[]
+}
+
+model Override {
+  id          String    @id @default(cuid())
+  candidateId String
+  userId      String
+  fromTier    String
+  toTier      String
+  note        String?
+  createdAt   DateTime  @default(now())
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
