@@ -48,3 +48,35 @@ export interface SelfCheckResult {
   suggestions: SelfCheckSuggestion[];
   requirementMatches: RequirementMatch[];
 }
+
+export interface LearningResource {
+  name: string;
+  url: string | null;
+  searchFor: string | null;
+  timeCommitment: string;
+  cost: string;
+}
+
+export interface LearningGap {
+  requirement: string;
+  status: "PARTIAL" | "MISSING";
+  plainEnglish: string;
+  whyItMatters: string;
+  estimatedTime: string;
+  selfStudyViable: boolean;
+  resources: LearningResource[];
+  thisWeek: string;
+}
+
+export interface AlternativePath {
+  title: string;
+  rationale: string;
+}
+
+export interface LearningCoachResult {
+  summary: string;
+  encouragement: string;
+  gaps: LearningGap[];
+  alternativePaths?: AlternativePath[];
+  honestNote?: string;
+}

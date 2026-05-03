@@ -2,8 +2,8 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
-import { Upload, FileText, ArrowRight, CheckCircle, AlertCircle, Minus } from "lucide-react";
-import type { SelfCheckResult } from "@/lib/ai/types";
+import { Upload, FileText, ArrowRight, CheckCircle, AlertCircle, Minus, BookOpen, ExternalLink } from "lucide-react";
+import type { SelfCheckResult, LearningCoachResult } from "@/lib/ai/types";
 
 type EvidenceLevel = "strong" | "partial" | "none";
 
@@ -58,8 +58,12 @@ export default function CandidateCheckPage() {
   const [loadingMsg, setLoadingMsg] = useState("");
   const [result, setResult] = useState<SelfCheckResult | null>(null);
   const [error, setError] = useState("");
+  const [coachResult, setCoachResult] = useState<LearningCoachResult | null>(null);
+  const [coachLoading, setCoachLoading] = useState(false);
+  const [coachError, setCoachError] = useState("");
   const jdFileRef = useRef<HTMLInputElement>(null);
   const cvFileRef = useRef<HTMLInputElement>(null);
+  const jdTextRef = useRef("");
 
   async function handleCheck() {
     if ((!jd.trim() && !jdFile) || (!cv.trim() && !cvFile)) {
@@ -95,6 +99,8 @@ export default function CandidateCheckPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Something went wrong");
       setResult(data.result);
+      setCoachResult(null);
+      jdTextRef.current = jdFile ? "" : jd;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -110,6 +116,33 @@ export default function CandidateCheckPage() {
     setJdFile(null);
     setCvFile(null);
     setError("");
+    setCoachResult(null);
+    setCoachError("");
+    jdTextRef.current = "";
+  }
+
+  async function handleGetLearningPlan() {
+    if (!result) return;
+    setCoachLoading(true);
+    setCoachError("");
+    try {
+      const res = await fetch("/api/learning-coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tier: result.tier,
+          requirementMatches: result.requirementMatches,
+          jobDescription: jdTextRef.current,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Something went wrong");
+      setCoachResult(data.result);
+    } catch (err: unknown) {
+      setCoachError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setCoachLoading(false);
+    }
   }
 
   if (result) {
@@ -219,6 +252,109 @@ export default function CandidateCheckPage() {
             })}
           </div>
         </section>
+
+        {/* Learning Coach */}
+        {!coachResult && (
+          <div className="border-t border-border pt-6 mt-2 flex flex-col items-center gap-3">
+            <p className="text-sm text-muted text-center">Want a personalised plan to close the gaps?</p>
+            <button
+              onClick={handleGetLearningPlan}
+              disabled={coachLoading}
+              className="flex items-center gap-2 bg-primary/10 text-primary border border-primary/30 px-5 py-2.5 rounded-md text-sm font-medium hover:bg-primary/15 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              {coachLoading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  Building your learning plan...
+                </>
+              ) : (
+                <>
+                  <BookOpen className="w-4 h-4" />
+                  Get my learning plan
+                </>
+              )}
+            </button>
+            {coachError && (
+              <p className="text-sm text-destructive">{coachError}</p>
+            )}
+          </div>
+        )}
+
+        {coachResult && (
+          <div className="border-t border-border pt-8 mt-2">
+            <h2 className="text-lg font-semibold text-foreground mb-1 flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-primary" />
+              Your Learning Plan
+            </h2>
+            <p className="text-sm text-muted mb-2">{coachResult.summary}</p>
+            <p className="text-sm text-strong-fit mb-6">{coachResult.encouragement}</p>
+
+            {coachResult.honestNote && (
+              <div className="bg-worth-a-look/10 border border-worth-a-look/30 rounded-lg px-4 py-3 mb-6 text-sm text-muted">
+                {coachResult.honestNote}
+              </div>
+            )}
+
+            {coachResult.gaps.length > 0 && (
+              <div className="flex flex-col gap-5 mb-6">
+                {coachResult.gaps.map((gap, i) => (
+                  <div key={i} className="bg-card border border-border rounded-xl p-5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${gap.status === "MISSING" ? "bg-likely-not/10 text-likely-not" : "bg-worth-a-look/10 text-worth-a-look"}`}>
+                        {gap.status === "MISSING" ? "Missing" : "Partial"}
+                      </span>
+                      <span className="text-sm font-semibold text-foreground">{gap.requirement}</span>
+                    </div>
+                    <p className="text-sm text-muted mb-1">{gap.plainEnglish}</p>
+                    <p className="text-xs text-muted-foreground mb-3">{gap.whyItMatters}</p>
+
+                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground mb-3">
+                      <span>Realistic time: <strong className="text-foreground">{gap.estimatedTime}</strong></span>
+                      <span>Self-study viable: <strong className="text-foreground">{gap.selfStudyViable ? "Yes" : "Difficult"}</strong></span>
+                    </div>
+
+                    {gap.resources.length > 0 && (
+                      <div className="flex flex-col gap-2 mb-3">
+                        {gap.resources.map((r, j) => (
+                          <div key={j} className="flex items-start gap-2 text-sm">
+                            <ExternalLink className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                            <div>
+                              {r.url ? (
+                                <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">{r.name}</a>
+                              ) : (
+                                <span className="font-medium text-foreground">{r.name}</span>
+                              )}
+                              {r.searchFor && <span className="text-muted-foreground"> — search: "{r.searchFor}"</span>}
+                              <span className="text-muted-foreground"> · {r.timeCommitment} · {r.cost}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="bg-primary/5 border border-primary/20 rounded-lg px-3 py-2 text-xs text-primary">
+                      <strong>This week:</strong> {gap.thisWeek}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {coachResult.alternativePaths && coachResult.alternativePaths.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-foreground mb-3">Alternative paths worth considering</h3>
+                <div className="flex flex-col gap-2">
+                  {coachResult.alternativePaths.map((p, i) => (
+                    <div key={i} className="bg-card border border-border rounded-lg p-4">
+                      <p className="text-sm font-medium text-foreground mb-1">{p.title}</p>
+                      <p className="text-xs text-muted leading-relaxed">{p.rationale}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <p className="text-xs text-muted-foreground text-center border-t border-border pt-6">
           This is a recommendation, not a verdict. Recruiters make the final call.

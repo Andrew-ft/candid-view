@@ -4,6 +4,9 @@ import type {
   FairnessCheckResult,
   MatchResult,
   SelfCheckResult,
+  LearningCoachResult,
+  RequirementMatch,
+  Tier,
 } from "./types";
 
 
@@ -349,4 +352,109 @@ ${cvText}`,
     throw new Error("No tool use in response");
   }
   return toolUse.input as SelfCheckResult;
+}
+
+export async function learningCoach(
+  tier: Tier,
+  requirementMatches: RequirementMatch[],
+  jobDescription: string
+): Promise<LearningCoachResult> {
+  const LEARNING_COACH_PROMPT = `You are CandidView's Learning Coach, helping a job seeker close the gap between their current CV and a specific job. You will receive structured job requirements, a per-requirement match status (MET, PARTIAL, or MISSING) with evidence from the candidate's CV, and an overall tier (Strong Fit, Worth a Look, or Likely Not a Fit). Your role is to suggest practical, mostly free learning paths to close PARTIAL and MISSING gaps — never the MET ones. Be encouraging and concrete, never patronising or discouraging. Frame everything as options the candidate can choose from, never as things they "must" do. Prefer free resources (freeCodeCamp, Khan Academy, MIT OpenCourseWare, official docs, reputable YouTube channels, Coursera audit mode, Microsoft Learn, Google's free certifications, OpenLearn, National Careers Service) and only suggest paid options when free alternatives genuinely don't exist, always noting the cost. Name specific courses where you can, but don't invent URLs — if unsure, tell the candidate what to search for instead. Be honest about time: if something realistically takes six months, say six months. Acknowledge when a gap can't be closed by self-study (years of experience, certifications with prerequisites, clearances) and suggest adjacent roles or alternative routes instead of pretending a YouTube playlist will fix it. For each gap, explain what the requirement means in plain English, why employers ask for it, give one to three specific resources with rough time commitments, a realistic timeframe to genuinely claim the skill, and the smallest concrete action the candidate could take in the next seven days. Open with a short honest summary of how reachable the role is and one sentence of encouragement drawn from the MET requirements so the candidate sees what they already bring. If the tier is Strong Fit with minor gaps, keep the plan short — don't manufacture work. If it's Likely Not a Fit with very large gaps, be honest in the summary and lean on alternative paths. Never use the words "rejected," "unqualified," or "not good enough." Never guarantee outcomes — frame suggestions as things that "would strengthen your application." Never suggest the candidate lie or exaggerate on their CV. Return your response as valid JSON matching the schema requested.`;
+
+  const matchSummary = requirementMatches
+    .map((m) => {
+      const status = m.evidence === "strong" ? "MET" : m.evidence === "partial" ? "PARTIAL" : "MISSING";
+      return `- ${m.requirement} (${m.type}): ${status} — ${m.justification}`;
+    })
+    .join("\n");
+
+  const response = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 4096,
+    system: LEARNING_COACH_PROMPT,
+    tools: [
+      {
+        name: "learning_plan",
+        description: "Generate a personalised learning plan for a candidate to close gaps",
+        input_schema: {
+          type: "object" as const,
+          properties: {
+            summary: {
+              type: "string",
+              description: "Short honest summary of how reachable this role is right now",
+            },
+            encouragement: {
+              type: "string",
+              description: "One sentence of encouragement drawn from MET requirements",
+            },
+            gaps: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  requirement: { type: "string" },
+                  status: { type: "string", enum: ["PARTIAL", "MISSING"] },
+                  plainEnglish: { type: "string", description: "What this requirement means in plain English" },
+                  whyItMatters: { type: "string", description: "Why employers ask for this" },
+                  estimatedTime: { type: "string", description: "Realistic time to genuinely claim this skill" },
+                  selfStudyViable: { type: "boolean" },
+                  resources: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string" },
+                        url: { type: ["string", "null"], description: "Only include if you are certain the URL is correct, otherwise null" },
+                        searchFor: { type: ["string", "null"], description: "What to search for if URL is uncertain" },
+                        timeCommitment: { type: "string" },
+                        cost: { type: "string", description: "Free, or cost if paid" },
+                      },
+                      required: ["name", "url", "searchFor", "timeCommitment", "cost"],
+                    },
+                  },
+                  thisWeek: { type: "string", description: "Smallest concrete action in the next 7 days" },
+                },
+                required: ["requirement", "status", "plainEnglish", "whyItMatters", "estimatedTime", "selfStudyViable", "resources", "thisWeek"],
+              },
+            },
+            alternativePaths: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  rationale: { type: "string" },
+                },
+                required: ["title", "rationale"],
+              },
+            },
+            honestNote: {
+              type: ["string", "null"],
+              description: "Honest note if some gaps genuinely cannot be closed by self-study",
+            },
+          },
+          required: ["summary", "encouragement", "gaps"],
+        },
+      },
+    ],
+    tool_choice: { type: "tool", name: "learning_plan" },
+    messages: [
+      {
+        role: "user",
+        content: `Overall tier: ${tier}
+
+Requirement match breakdown:
+${matchSummary}
+
+Job description context:
+${jobDescription}`,
+      },
+    ],
+  });
+
+  const toolUse = response.content.find((c) => c.type === "tool_use");
+  if (!toolUse || toolUse.type !== "tool_use") {
+    throw new Error("No tool use in response");
+  }
+  return toolUse.input as LearningCoachResult;
 }
